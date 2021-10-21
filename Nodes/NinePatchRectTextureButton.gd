@@ -60,6 +60,12 @@ func set_texture_state(value: int):
 		_TEXTURE_STATES.HOVER: texture = texture_hover
 		_TEXTURE_STATES.DISABLED: texture = texture_disabled
 
+func set_all_textures(texture: Texture):
+	set_texture_normal(texture)
+	set_texture_pressed(texture)
+	set_texture_hover(texture)
+	set_texture_disabled(texture)
+
 func set_texture_normal(value: Texture):
 	texture_normal = value
 	set_texture_state(_texture_state)

@@ -1,7 +1,5 @@
 # **Godot Utilities**
 
-------
-
 #### A collection of various nodes and scenes
 
 
