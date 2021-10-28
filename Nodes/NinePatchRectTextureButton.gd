@@ -1,13 +1,27 @@
+class_name NinePatchRectTextureButton
 extends NinePatchRect
 tool
+
+"""
+A TextureButton which uses a NinePatchRect in place of the standard texture
+"""
+
+signal pressed
 
 enum _TEXTURE_STATES {NORMAL, PRESSED, HOVER, DISABLED}
 var _texture_state: int = _TEXTURE_STATES.NORMAL setget set_texture_state
 
 export var text: String = "" setget set_text
 export var text_font: Font setget set_text_font
-export var text_position_base: float = 0.0
+export var text_position_base: float = 0.0 setget set_text_position_base
 export var text_position_pressed: float = 0.0
+export var node_pressed_offset: float = 0.0
+export var disabled: bool = false setget set_disabled
+
+export(Array, NodePath) var nodepaths_to_offset: Array = []
+var nodes_to_offset: ExArray = ExArray.new()
+var _nodes_to_offset_default_positions: Dictionary = {}
+
 export var texture_normal: Texture setget set_texture_normal
 export var texture_pressed: Texture setget set_texture_pressed
 export var texture_hover: Texture setget set_texture_hover
@@ -24,6 +38,14 @@ func _on_mouse_inside_changed(_mouse_inside: bool):
 		set_texture_state(_TEXTURE_STATES.HOVER if mouse_inside else _TEXTURE_STATES.NORMAL)
 
 func _on_pressed_changed(pressed: bool):
+	for node in nodes_to_offset:
+		if node is Node2D:
+			node.position.y = _nodes_to_offset_default_positions[node] + (node_pressed_offset if pressed else 0.0)
+		elif node is Control:
+			node.rect_position.y = _nodes_to_offset_default_positions[node] + (node_pressed_offset if pressed else 0.0)
+		else:
+			push_error("Node of invalid type added to nodes_to_offset")
+	
 	if pressed:
 		set_texture_state(_TEXTURE_STATES.PRESSED)
 		text_label.rect_position.y = text_position_pressed
@@ -35,7 +57,16 @@ func _on_item_rect_changed():
 	button.rect_size = rect_size
 	text_label.rect_size = rect_size
 
+func _on_button_pressed():
+	emit_signal("pressed")
+
+func _init():
+	nodes_to_offset.connect("items_added", self, "_on_nodes_to_offset_items_added")
+
 func _ready():
+	for nodepath in nodepaths_to_offset:
+		nodes_to_offset.append(get_node(nodepath))
+	
 	if not button.is_inside_tree():
 		add_child(button)
 		button.focus_mode = Control.FOCUS_NONE
@@ -49,6 +80,7 @@ func _ready():
 		connect("item_rect_changed", self, "_on_item_rect_changed")
 		button.connect("button_down", self, "_on_pressed_changed", [true])
 		button.connect("button_up", self, "_on_pressed_changed", [false])
+		button.connect("pressed", self, "_on_button_pressed")
 	_on_item_rect_changed()
 	_on_pressed_changed(false)
 
@@ -89,3 +121,21 @@ func set_text_font(value: Font):
 
 func get_icon_class() -> String:
 	return "TextureButton"
+
+func _on_nodes_to_offset_items_added(items: Array):
+	for item in items:
+		if item is Node2D:
+			_nodes_to_offset_default_positions[item] = item.position.y
+		elif item is Control:
+			_nodes_to_offset_default_positions[item] = item.rect_position.y
+		else:
+			push_error("Node of invalid type added to nodes_to_offset")
+
+func set_text_position_base(value: float):
+	text_position_base = value
+	if _texture_state != _TEXTURE_STATES.PRESSED:
+		text_label.rect_position.y = text_position_base
+
+func set_disabled(value: bool):
+	disabled = value
+	button.disabled = disabled
