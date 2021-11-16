@@ -37,4 +37,6 @@
 
   ​	Gets / sets the (global) position of the passed node. The node must be either a Node2D or Control.
 
-  
+- append_dictionary
+
+  ​	Appends the passed 'append' dictionary's items to the passed 'base' dictionary (overwrites values)

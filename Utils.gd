@@ -58,3 +58,12 @@ func set_node_position(node: Node, position: Vector2, global: bool = false):
 	else:
 		push_error("Node '" + str(node) + "' isn't a Node2D or Control")
 
+# Appends the 'append' dictionary onto the 'base' dictionary (values will be overwritten) 
+# If 'duplicate_values is true, values that are an array or dictionary will be duplicated
+func append_dictionary(base: Dictionary, append: Dictionary, duplicate_values: bool = false):
+	for key in append:
+		print("APPEND ", key)
+		var value = append[key]
+		if duplicate_values and (value is Array or value is Dictionary):
+			value = value.duplicate()
+		base[key] = value
