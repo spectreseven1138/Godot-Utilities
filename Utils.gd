@@ -67,3 +67,55 @@ func append_dictionary(base: Dictionary, append: Dictionary, duplicate_values: b
 		if duplicate_values and (value is Array or value is Dictionary):
 			value = value.duplicate()
 		base[key] = value
+
+func bbcode_colour_text(text: String, colour: Color) -> String:
+	return "[color=#" + colour.to_html() + "]" + text + "[/color]"
+
+func get_line_of_position(string: String, position: int) -> int:
+	
+	if position == 0:
+		return 0
+	elif position >= len(string) or position < 0:
+		push_error("Position is outside of passed string bounds")
+		return -1
+	
+	var line: int = 0
+	for i in position:
+		if string[i] == "\n":
+			line += 1
+	return line
+
+func get_position_of_line(string: String, line: int) -> int:
+	if line == 0:
+		return 0
+	elif line > 0:
+		var current_line: int = 0
+		for i in len(string):
+			if string[i] == "\n":
+				current_line += 1
+				if current_line == line:
+					return i + 1
+	
+	push_error("Line is outside of passed string bounds")
+	return -1
+
+func get_dir_items(dir, skip_navigational: bool = true, skip_hidden: bool = true):
+	
+	if dir is String:
+		var path: String = dir
+		dir = Directory.new()
+		var error: int = dir.open(path)
+		if error != OK:
+			return error
+	elif not dir is Directory:
+		push_error("The 'dir' argument must be a string or Directory")
+		assert(false, "The 'dir' argument must be a string or Directory")
+		return []
+	
+	var ret = []
+	dir.list_dir_begin(skip_navigational, skip_hidden)
+	var file_name = dir.get_next()
+	while file_name != "":
+		ret.append(file_name)
+		file_name = dir.get_next()
+	return ret
