@@ -6,6 +6,22 @@ var RNG: RandomNumberGenerator = RandomNumberGenerator.new()
 func _init():
 	RNG.randomize()
 
+func sprint(items: Array, tprint: bool = false):
+	var msg: String = ""
+	
+	for i in len(items):
+		msg += str(items[i])
+		if i + 1 != len(items):
+			msg += " | "
+	
+	if tprint:
+		tprint(msg)
+	else:
+		print(msg)
+
+func tprint(msg):
+	print(OS.get_ticks_msec(), ": ", msg)
+
 # Returns a random item from the passed array
 func random_array_item(array: Array, rng: RandomNumberGenerator = RNG):
 	return array[rng.randi() % len(array)]
@@ -22,7 +38,7 @@ func random_colour(r: float = NAN, g: float = NAN, b: float = NAN, a: float = NA
 # Removes 'node' from its parent, then makes it a child of 'new_parent'
 # If 'retain_global_position' is true, the global_position of 'node' will be maintained
 func reparent_node(node: Node, new_parent: Node, retain_global_position: bool = false):
-	var original_global_position: Vector2
+	var original_global_position
 	if retain_global_position:
 		original_global_position = get_node_position(node, true)
 	
@@ -38,23 +54,27 @@ func to_local(position_of: Node, relative_to: Node):
 	return get_node_position(position_of, true) - get_node_position(relative_to, true)
 
 # Returns the (global) position of the passed node
-# The node must be either a Node2D or Control
+# The node must be a Node2D, Control, or Spatial
 func get_node_position(node: Node, global: bool = false) -> Vector2:
 	if node is Node2D:
 		return node.global_position if global else node.position
 	elif node is Control:
 		return node.rect_global_position if global else node.rect_position
+	elif node is Spatial:
+		return node.global_transform if global else node.transform
 	else:
 		push_error("Node '" + str(node) + "' isn't a Node2D or Control")
 		return Vector2.ZERO
 
 # Sets the (global) position of the passed node
-# The node must be either a Node2D or Control
-func set_node_position(node: Node, position: Vector2, global: bool = false):
+# The node must be Node2D, Control, or Spatial
+func set_node_position(node: Node, position, global: bool = false):
 	if node is Node2D:
 		node.set("global_position" if global else "position", position)
 	elif node is Control:
 		node.set("rect_global_position" if global else "rect_position", position)
+	elif node is Spatial:
+		node.set("global_transform" if global else "transform", position)
 	else:
 		push_error("Node '" + str(node) + "' isn't a Node2D or Control")
 
