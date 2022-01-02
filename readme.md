@@ -43,7 +43,7 @@
 
 - get_node_position / set_node_position
 
-  ​	Gets / sets the (global) position of the passed node. The node must be either a Node2D or Control.
+  ​	Gets / sets the (global) position of the passed node. The node must be a Node2D, Control, or Spatial.
 
 - append_dictionary
 
