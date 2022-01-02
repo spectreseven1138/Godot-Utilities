@@ -17,6 +17,14 @@
 
 ### Functions (contained in Utils.gd):
 
+- sprint
+
+  ​	Takes a single array as an argument, and prints the contents in a single line with dividers (Ex. sprint([1, 2, 3]) -> "1 | 2 | 3"). If 'tprint' is true, it will print using the 'tprint' function.
+ 
+- tprint
+
+  ​	Prints the passed value prefixed with OS.get_ticks_msec() (Ex. tprint("Hello World") -> "100: Hello World"). Useful when printing every frame.
+
 - random_array_item
 
   ​	Returns a random item from the passed array.
