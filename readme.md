@@ -25,7 +25,7 @@
 
   ​	Returns the anchor node (an Node added to the Utils singleton on ready).
 
-- `Node` **get_unique_anchor** `( type: Any )` *<- type must be a GDScript or GDScriptNativeClass*
+- `Node` **get_unique_anchor** `( type: GDScript or GDScriptNativeClass )`
 
   ​	Creates a new node using [type], adds it to the anchor node, and returns it.
 
