@@ -6,45 +6,84 @@
 
 ### Nodes:
 
-- NinePatchRectTextureButton
+- **NinePatchRectTextureButton**
   - A combination of a NinePatchRect and a TextureButton, with some extra features like text
-- ExArray
+- **ExArray**
   - A custom array class with a limit property and signals for when items are added or removed
-- ExTexture
+- **ExTexture**
   - A texture class which allows a texture to be scaled
 
 
 
 ### Functions (contained in Utils.gd):
 
-- sprint
+- `RandomNumberGenerator` **get_RNG** `( )`
 
-  ​	Takes a single array as an argument, and prints the contents in a single line with dividers (Ex. sprint([1, 2, 3]) -> "1 | 2 | 3"). If 'tprint' is true, it will print using the 'tprint' function.
+  ​	Returns the RNG object (a RandomNumberGenerator created and randomised on init).
+
+- `Node` **get_anchor** `( )`
+
+  ​	Returns the anchor node (an Node added to the Utils singleton on ready).
+
+- `Node` **get_unique_anchor** `( type: Any )` *<- type must be a GDScript or GDScriptNativeClass*
+
+  ​	Creates a new node using [type], adds it to the anchor node, and returns it.
+
+- `void` **sprint** `( items: Array, divider: String = " | ", tprint: bool = false )`
+
+  ​	Prints [items] in a single line with dividers. If [tprint] is true, prints using the tprint function.
+  
+  ​ Example: `sprint(["one", 2, "three"])` **->** one | 2 | three
  
-- tprint
+- `void` **tprint** `( msg: Any )`
 
-  ​	Prints the passed value prefixed with OS.get_ticks_msec() (Ex. tprint("Hello World") -> "100: Hello World"). Useful when printing every frame.
+  ​	Prints [msg] prepended with the current engine time (OS.get_ticks_msec()). Useful for printing every frame.
 
-- random_array_item
+- `Any` **random_array_item** `( array: Array, rng: RandomNumberGenerator = get_RNG() )`
 
-  ​	Returns a random item from the passed array.
+  ​	Returns a random item from [array] using [rng].
 
-- random_colour
+- `Color` **random_colour** `( r: float = NAN, g: float = NAN, b: float = NAN, a: float = NAN, rng: RandomNumberGenerator = get_rng() )`
 
-  ​	Returns a random colour. Individual RBGA values can be overridden if needed.
+  ​	Returns a random colour. Individual values can be overridden using [r], [g], [b], and [a].
 
-- reparent_node
+- `void` **reparent_node** `( node: Node, new_parent: Node, retain_global_position: bool = false )`
 
-  ​	Removes the passed child node from its parent, then makes it a child of the passed parent node. If 'retain_global_position' is true, the global_position of the child node will be maintained.
+  ​	Removes [node] from its parent, then adds it to  [new_parent]. If [retain_global_position] is true, the global_position of [node] will be maintained.
 
-- to_local
+- `Vector2` **to_local** `( position_of: Node, relative_to: Node )`
 
-  ​	Equivalent to Node2D.to_local(), but also works for Control nodes.
+  ​	Returns the position of [position_of] relative to [relative_to]. Equivalent to Node2D.to_local(), but also works for Control and Spatial nodes.
 
-- get_node_position / set_node_position
+- `Vector2` **get_node_position** `( node: Node, global: bool = false )`
 
-  ​	Gets / sets the (global) position of the passed node. The node must be a Node2D, Control, or Spatial.
+  ​ Returns the local or [global] position of [node]. [node] must be a Node2D, Control, or Spatial.
 
-- append_dictionary
+- `void` **set_node_position** `( node: Node, global: bool = false )`
 
-  ​	Appends the passed 'append' dictionary's items to the passed 'base' dictionary (overwrites values)
+  ​ Sets the local or [global] position of the [node]. [node] must be a Node2D, Control, or Spatial.
+
+- `Color` **get_global_modulate** `( node: CanvasItem )`
+
+  ​ Returns the global modulation of [node] (the product of the modulations of the node and all its ancestors). In other words, returns the actual modulation applied to the node when rendered.
+
+- `void` **append_dictionary** `( base: Dictionary, append: Dictionary, duplicate_values: bool = false )`
+
+  ​	Appends [append] onto [base] (values will be overwritten). If [duplicate_values] is true, values that are an array or dictionary will be duplicated.
+
+- `String` **bbcode_colour_text** `( text: String, colour: Color )`
+
+  ​ Returns [text] as a BBCode formatted string with the passed [colour].
+
+- `int` **get_line_of_position** `( string: String, position: int )`
+
+  ​	Returns the line number of [position] within [string].
+
+- `int` **get_position_of_line** `( string: String, line: int )`
+
+  ​	Returns the position of [line] within [string].
+
+- `Array or int (error)` **get_dir_items** `( directory: String (path) or Directory, skip_navigational: bool = true, skip_hidden: bool = true )`
+
+  ​	Returns the items contained in [directory] as an array. May return an int error.
+

@@ -1,60 +1,77 @@
 # Singleton containing various utility functions
 extends Node
 
-var RNG: RandomNumberGenerator = RandomNumberGenerator.new()
+var RNG: RandomNumberGenerator = RandomNumberGenerator.new() setget set_RNG, get_RNG
+onready var anchor: Node = Node.new() setget set_anchor, get_anchor
 
-func _init():
-	RNG.randomize()
+# Returns the RNG object (a RandomNumberGenerator created and randomised on init).
+func get_RNG() -> RandomNumberGenerator:
+	return RNG
 
-func sprint(items: Array, tprint: bool = false):
+# Returns the anchor node (an Node added to the Utils singleton on ready).
+func get_anchor() -> Node:
+	return anchor
+
+# Creates a new node with the passed type, adds it to the anchor, and returns it
+func get_unique_anchor(type = Node) -> Node:
+	var ret: Node = type.new()
+	anchor.add_child(ret)
+	return ret
+
+# Prints [items] in a single line with dividers.
+# If [tprint] is true, prints using the tprint function.
+func sprint(items: Array, divider: String = " | ", tprint: bool = false):
 	var msg: String = ""
 	
 	for i in len(items):
 		msg += str(items[i])
 		if i + 1 != len(items):
-			msg += " | "
+			msg += divider
 	
 	if tprint:
 		tprint(msg)
 	else:
 		print(msg)
 
+# Prints [msg] prepended with the current engine time (OS.get_ticks_msec()). Useful for printing every frame.
 func tprint(msg):
 	print(OS.get_ticks_msec(), ": ", msg)
 
-# Returns a random item from the passed array
-func random_array_item(array: Array, rng: RandomNumberGenerator = RNG):
+# Returns a random item from [array] using [rng].
+func random_array_item(array: Array, rng: RandomNumberGenerator = get_RNG()):
 	return array[rng.randi() % len(array)]
 
-# Returns a random colour
-# Individual RBGA values can be overridden if needed
-func random_colour(r: float = NAN, g: float = NAN, b: float = NAN, a: float = NAN, rng: RandomNumberGenerator = RNG) -> Color:
+# Returns a random colour.
+# Individual values can be overridden using [r], [g], [b], and [a].
+func random_colour(r: float = NAN, g: float = NAN, b: float = NAN, a: float = NAN, rng: RandomNumberGenerator = get_RNG()) -> Color:
 	var ret: Color = Color(rng.randf(), rng.randf(), rng.randf())
 	for property in ["r", "g", "b", "a"]:
 		if not is_nan(get(property)):
 			ret[property] = get(property)
 	return ret
 
-# Removes 'node' from its parent, then makes it a child of 'new_parent'
-# If 'retain_global_position' is true, the global_position of 'node' will be maintained
+# Removes [node] from its parent, then adds it to  [new_parent].
+# If [retain_global_position] is true, the global_position of [node] will be maintained.
 func reparent_node(node: Node, new_parent: Node, retain_global_position: bool = false):
 	var original_global_position
 	if retain_global_position:
 		original_global_position = get_node_position(node, true)
 	
-	if node.is_inside_tree():
-		node.get_parent().remove_child(node)
+	var old_parent: Node = node.get_parent()
+	if is_instance_valid(old_parent):
+		old_parent.remove_child(node)
 	new_parent.add_child(node)
 	
 	if retain_global_position:
 		set_node_position(node, original_global_position, true)
 
-# Equivalent to Node2D.to_local(), but also works for Control nodes
-func to_local(position_of: Node, relative_to: Node):
+# Returns the position of [position_of] relative to [relative_to].
+# Equivalent to Node2D.to_local(), but also works for Control and Spatial nodes.
+func to_local(position_of: Node, relative_to: Node) -> Vector2:
 	return get_node_position(position_of, true) - get_node_position(relative_to, true)
 
-# Returns the (global) position of the passed node
-# The node must be a Node2D, Control, or Spatial
+# Returns the local or [global] position of [node].
+# [node] must be a Node2D, Control, or Spatial.
 func get_node_position(node: Node, global: bool = false) -> Vector2:
 	if node is Node2D:
 		return node.global_position if global else node.position
@@ -66,8 +83,8 @@ func get_node_position(node: Node, global: bool = false) -> Vector2:
 		push_error("Node '" + str(node) + "' isn't a Node2D or Control")
 		return Vector2.ZERO
 
-# Sets the (global) position of the passed node
-# The node must be Node2D, Control, or Spatial
+# Sets the local or [global] position of the [node].
+# [node] must be a Node2D, Control, or Spatial.
 func set_node_position(node: Node, position, global: bool = false):
 	if node is Node2D:
 		node.set("global_position" if global else "position", position)
@@ -78,19 +95,37 @@ func set_node_position(node: Node, position, global: bool = false):
 	else:
 		push_error("Node '" + str(node) + "' isn't a Node2D or Control")
 
-# Appends the 'append' dictionary onto the 'base' dictionary (values will be overwritten) 
-# If 'duplicate_values is true, values that are an array or dictionary will be duplicated
+# Returns the global modulation of [node] (the product of the modulations of the node and all its ancestors).
+# In other words, returns the actual modulation applied to the node when rendered.
+func get_global_modulate(node: CanvasItem) -> Color:
+	var ret: Color = node.modulate
+	var root: Viewport = get_tree().root
+	
+	var parent: Node = node.get_parent()
+	while true:
+		if parent is CanvasItem:
+			ret *= parent.modulate
+		parent = parent.get_parent()
+		
+		if not is_instance_valid(parent) or parent == root:
+			break
+	
+	return ret
+
+# Appends [append] onto [base] (values will be overwritten).
+# If [duplicate_values] is true, values that are an array or dictionary will be duplicated.
 func append_dictionary(base: Dictionary, append: Dictionary, duplicate_values: bool = false):
 	for key in append:
-		print("APPEND ", key)
 		var value = append[key]
 		if duplicate_values and (value is Array or value is Dictionary):
 			value = value.duplicate()
 		base[key] = value
 
+# Returns [text] as a BBCode formatted string with the passed [colour].
 func bbcode_colour_text(text: String, colour: Color) -> String:
 	return "[color=#" + colour.to_html() + "]" + text + "[/color]"
 
+# Returns the line number of [position] within [string].
 func get_line_of_position(string: String, position: int) -> int:
 	
 	if position == 0:
@@ -105,6 +140,7 @@ func get_line_of_position(string: String, position: int) -> int:
 			line += 1
 	return line
 
+# Returns the position of [line] within [string].
 func get_position_of_line(string: String, line: int) -> int:
 	if line == 0:
 		return 0
@@ -119,23 +155,38 @@ func get_position_of_line(string: String, line: int) -> int:
 	push_error("Line is outside of passed string bounds")
 	return -1
 
-func get_dir_items(dir, skip_navigational: bool = true, skip_hidden: bool = true):
+# Returns the items contained in [directory] as an array. May return an int error.
+func get_dir_items(directory, skip_navigational: bool = true, skip_hidden: bool = true):
+	assert(directory is String or directory is Directory, "[directory] must be a String or Directory")
 	
-	if dir is String:
-		var path: String = dir
-		dir = Directory.new()
-		var error: int = dir.open(path)
+	if directory is String:
+		var path: String = directory
+		directory = Directory.new()
+		var error: int = directory.open(path)
 		if error != OK:
 			return error
-	elif not dir is Directory:
-		push_error("The 'dir' argument must be a string or Directory")
-		assert(false, "The 'dir' argument must be a string or Directory")
-		return []
 	
-	var ret = []
-	dir.list_dir_begin(skip_navigational, skip_hidden)
-	var file_name = dir.get_next()
+	var ret: Array = []
+	directory.list_dir_begin(skip_navigational, skip_hidden)
+	var file_name = directory.get_next()
 	while file_name != "":
 		ret.append(file_name)
-		file_name = dir.get_next()
+		file_name = directory.get_next()
 	return ret
+
+# ------------------------------
+
+func _init():
+	RNG.randomize()
+
+func _ready():
+	add_child(anchor)
+
+# Deleted function
+func set_RNG(_value: RandomNumberGenerator):
+	return
+
+# Deleted function
+func set_anchor(_value: Node):
+	return
+
