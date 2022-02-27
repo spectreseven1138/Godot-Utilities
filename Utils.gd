@@ -174,6 +174,24 @@ func get_dir_items(directory, skip_navigational: bool = true, skip_hidden: bool 
 		file_name = directory.get_next()
 	return ret
 
+func load_json(path: String):
+	var f = File.new()
+	if not f.file_exists(path):
+		return null
+	f.open(path, File.READ)
+	var data = f.get_as_text()
+	f.close()
+	return JSON.parse(data).result
+
+func save_json(path: String, data, pretty: bool = false):
+	var f = File.new()
+	var error: int = f.open(path, File.WRITE)
+	if error != OK:
+		push_error("Error saving json file '" + path + "': " + str(error))
+		return
+	f.store_string(JSON.print(data, "\t" if pretty else ""))
+	f.close()
+
 # ------------------------------
 
 func _init():
