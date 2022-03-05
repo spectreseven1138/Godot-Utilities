@@ -20,7 +20,7 @@ func get_unique_anchor(type = Node) -> Node:
 
 # Prints [items] in a single line with dividers.
 # If [tprint] is true, prints using the tprint function.
-func sprint(items: Array, divider: String = " | ", tprint: bool = false):
+func sprint(items: Array, tprint: bool = false, divider: String = " | "):
 	var msg: String = ""
 	
 	for i in len(items):
@@ -191,6 +191,16 @@ func save_json(path: String, data, pretty: bool = false):
 		return
 	f.store_string(JSON.print(data, "\t" if pretty else ""))
 	f.close()
+
+func yield_particle_completion(emitter: Node):
+	assert(emitter is Particles or emitter is Particles2D or emitter is CPUParticles or emitter is CPUParticles2D)
+	if not emitter.emitting:
+		return
+	
+	while emitter.emitting:
+		yield(get_tree(), "idle_frame")
+	
+	yield(get_tree().create_timer(emitter.lifetime / emitter.speed_scale), "timeout")
 
 # ------------------------------
 

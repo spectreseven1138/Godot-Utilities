@@ -8,12 +8,16 @@
 
 - **NinePatchRectTextureButton**
   - A combination of a NinePatchRect and a TextureButton, with some extra features like text
+- **NodeTrailEmitter**
+  - Emits a trail for each added node based on customisable parameters
+
+
+### Classes:
+
 - **ExArray**
-  - A custom array class with a limit property and signals for when items are added or removed
+  - A custom array with a limit property and signals emitted when items are added or removed
 - **ExTexture**
   - A texture class which allows a texture to be scaled
-
-
 
 ### Functions (contained in Utils.gd):
 
@@ -32,9 +36,9 @@
 - `void` **sprint** `( items: Array, divider: String = " | ", tprint: bool = false )`
 
   ​	Prints [items] in a single line with dividers. If [tprint] is true, prints using the tprint function.
-  
-  ​ Example: `sprint(["one", 2, "three"])` **->** one | 2 | three
- 
+
+   Example: `sprint(["one", 2, "three"])` **->** one | 2 | three
+
 - `void` **tprint** `( msg: Any )`
 
   ​	Prints [msg] prepended with the current engine time (OS.get_ticks_msec()). Useful for printing every frame.
@@ -57,15 +61,15 @@
 
 - `Vector2` **get_node_position** `( node: Node, global: bool = false )`
 
-  ​ Returns the local or [global] position of [node]. [node] must be a Node2D, Control, or Spatial.
+   Returns the local or [global] position of [node]. [node] must be a Node2D, Control, or Spatial.
 
 - `void` **set_node_position** `( node: Node, global: bool = false )`
 
-  ​ Sets the local or [global] position of the [node]. [node] must be a Node2D, Control, or Spatial.
+   Sets the local or [global] position of the [node]. [node] must be a Node2D, Control, or Spatial.
 
 - `Color` **get_global_modulate** `( node: CanvasItem )`
 
-  ​ Returns the global modulation of [node] (the product of the modulations of the node and all its ancestors). In other words, returns the actual modulation applied to the node when rendered.
+   Returns the global modulation of [node] (the product of the modulations of the node and all its ancestors). In other words, returns the actual modulation applied to the node when rendered.
 
 - `void` **append_dictionary** `( base: Dictionary, append: Dictionary, duplicate_values: bool = false )`
 
@@ -73,7 +77,7 @@
 
 - `String` **bbcode_colour_text** `( text: String, colour: Color )`
 
-  ​ Returns [text] as a BBCode formatted string with the passed [colour].
+   Returns [text] as a BBCode formatted string with the passed [colour].
 
 - `int` **get_line_of_position** `( string: String, position: int )`
 
@@ -86,4 +90,18 @@
 - `Array or int (error)` **get_dir_items** `( directory: String (path) or Directory, skip_navigational: bool = true, skip_hidden: bool = true )`
 
   ​	Returns the items contained in [directory] as an array. May return an int error.
+
+- `JSONParseResult` **load_json** `( path: String )`
+
+  ​	Loads file at [path], parses its contents as JSON, and returns the result.
+
+- `void` **save_json** `( path: String, data, pretty: bool = false )`
+
+  ​	Writes a file at [path] with [data] in JSON format. If [pretty] is true, indentation is added to the file.
+
+- `void` **yield_particle_completion** `( emitter: Node )`
+
+  ​	Yields until [emitter] has stopped emitting, and has no remaining particles. [emitter] must be of type Particles, Particles2D, CPUParticles, or CPUParticles2D.
+
+  
 
