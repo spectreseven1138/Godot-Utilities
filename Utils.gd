@@ -174,15 +174,17 @@ func get_dir_items(directory, skip_navigational: bool = true, skip_hidden: bool 
 		file_name = directory.get_next()
 	return ret
 
-func load_json(path: String):
+# Loads file at [path], parses its contents as JSON, and returns the result.
+func load_json(path: String) -> JSONParseResult:
 	var f = File.new()
 	if not f.file_exists(path):
 		return null
 	f.open(path, File.READ)
 	var data = f.get_as_text()
 	f.close()
-	return JSON.parse(data).result
+	return JSON.parse(data)
 
+# Writes a file at [path] with [data] in JSON format. If [pretty] is true, indentation is added to the file.
 func save_json(path: String, data, pretty: bool = false):
 	var f = File.new()
 	var error: int = f.open(path, File.WRITE)
@@ -192,15 +194,15 @@ func save_json(path: String, data, pretty: bool = false):
 	f.store_string(JSON.print(data, "\t" if pretty else ""))
 	f.close()
 
+# Yields until [emitter] has stopped emitting, and has no remaining particles. [emitter] must be of type Particles, Particles2D, CPUParticles, or CPUParticles2D.
 func yield_particle_completion(emitter: Node):
 	assert(emitter is Particles or emitter is Particles2D or emitter is CPUParticles or emitter is CPUParticles2D)
-	if not emitter.emitting:
-		return
 	
 	while emitter.emitting:
-		yield(get_tree(), "idle_frame")
-	
-	yield(get_tree().create_timer(emitter.lifetime / emitter.speed_scale), "timeout")
+		while emitter.emitting:
+			yield(get_tree(), "idle_frame")
+		
+		yield(get_tree().create_timer(emitter.lifetime / emitter.speed_scale), "timeout")
 
 # ------------------------------
 

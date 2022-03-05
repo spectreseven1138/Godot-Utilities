@@ -19,8 +19,6 @@ func _process(delta: float):
 		emission_timer = 0.0
 		return
 	
-	Utils.tprint(trail_container.get_child_count())
-	
 	if frequency < 0:
 		emit_trails()
 	else:
