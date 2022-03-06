@@ -1,8 +1,12 @@
 # Singleton containing various utility functions
 extends Node
 
+# Path of Godot-Utilities folder
+var utils_path: String = get_script().resource_path.get_base_dir()
+
 var RNG: RandomNumberGenerator = RandomNumberGenerator.new() setget set_RNG, get_RNG
-onready var anchor: Node = Node.new() setget set_anchor, get_anchor
+var anchor: Node = null setget set_anchor, get_anchor
+var canvaslayer: CanvasLayer = null setget set_canvaslayer, get_canvaslayer
 
 # Returns the RNG object (a RandomNumberGenerator created and randomised on init).
 func get_RNG() -> RandomNumberGenerator:
@@ -10,7 +14,18 @@ func get_RNG() -> RandomNumberGenerator:
 
 # Returns the anchor node (an Node added to the Utils singleton on ready).
 func get_anchor() -> Node:
+	if anchor == null:
+		assert(is_inside_tree())
+		anchor = Node.new()
+		add_child(anchor)
 	return anchor
+
+func get_canvaslayer() -> CanvasLayer:
+	if canvaslayer == null:
+		assert(is_inside_tree())
+		canvaslayer = CanvasLayer.new()
+		add_child(canvaslayer)
+	return canvaslayer
 
 # Creates a new node with the passed type, adds it to the anchor, and returns it
 func get_unique_anchor(type = Node) -> Node:
@@ -204,13 +219,53 @@ func yield_particle_completion(emitter: Node):
 		
 		yield(get_tree().create_timer(emitter.lifetime / emitter.speed_scale), "timeout")
 
+enum DIR2DICT_MODES {NESTED, SINGLE_LAYER_DIR, SINGLE_LAYER_FILE}
+func dir2dict(path: String, mode: int = DIR2DICT_MODES.NESTED, allowed_files = null, allowed_extensions = null, top_path: String = ""):
+	var ret: Dictionary = {}
+	var data: Dictionary = ret
+	if top_path == "":
+		top_path = path
+	
+	var dir: Directory = Directory.new()
+	
+	var error: int = dir.open(path)
+	if error != OK:
+		return error
+	
+	for file in get_dir_items(dir):
+		if dir.dir_exists(file):
+			if mode == DIR2DICT_MODES.NESTED:
+				data[file] = dir2dict(path + file + "/", mode, allowed_files, allowed_extensions, top_path)
+			else:
+				var layer_data: Dictionary = dir2dict(path + file + "/", mode, allowed_files, allowed_extensions, top_path)
+				for key in layer_data:
+					data[key] = layer_data[key]
+		else:
+			file = file.trim_suffix(".import")
+			if (allowed_files == null or file in allowed_files) and (allowed_extensions == null or file.split(".")[1] in allowed_extensions):
+				var key: String
+				match mode:
+					DIR2DICT_MODES.NESTED: key = file.split(".")[0]
+					DIR2DICT_MODES.SINGLE_LAYER_DIR: key = path.trim_prefix(top_path)
+					DIR2DICT_MODES.SINGLE_LAYER_FILE: key = path.trim_prefix(top_path) + file.split(".")[0]
+				data[key.trim_suffix("/")] = path + file
+	
+	return ret
+
+# Yields [signal_name] of [object] and returns the resulting value. If [return_value_container] is passed, the result value will be appended onto it. Useful for executing code while waiting for the signal.
+func remote_yield(object: Object, signal_name: String, return_value_container: Array = null):
+	var ret = yield(object, signal_name)
+	if return_value_container:
+		return_value_container.append(ret)
+	return ret
+
+func node_has_parent(node: Node):
+	return is_instance_valid(node.get_parent())
+
 # ------------------------------
 
 func _init():
 	RNG.randomize()
-
-func _ready():
-	add_child(anchor)
 
 # Deleted function
 func set_RNG(_value: RandomNumberGenerator):
@@ -220,3 +275,6 @@ func set_RNG(_value: RandomNumberGenerator):
 func set_anchor(_value: Node):
 	return
 
+# Deleted function
+func set_canvaslayer(_value: CanvasLayer):
+	return

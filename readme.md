@@ -10,6 +10,15 @@
   - A combination of a NinePatchRect and a TextureButton, with some extra features like text
 - **NodeTrailEmitter**
   - Emits a trail for each added node based on customisable parameters
+- **ExPhysicsBodyArea2D**
+  - A script intended for use with PhysicsBody2Ds and Area2Ds, with functions for quickly enabling and disabling all collision layers and masks.
+
+- **KinematicBody2DWithArea2D**
+  - A KinematicBody2D with an embedded Area2D that shares the same collision shapes
+
+- **CustomDialog**
+  - A custom WindowDialog with various additional functionality such as a signal emitted when any action occurs, and a static function to create and display the dialog with a single call.
+
 
 
 ### Classes:
