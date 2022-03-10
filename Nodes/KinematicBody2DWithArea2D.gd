@@ -2,42 +2,44 @@ extends KinematicBody2D
 class_name KinematicBody2DWithArea2D
 
 var area: ExPhysicsBodyArea2D
-var registered_shapes: Dictionary = {}
+var added_shapes: Array = []
+
+var rid: RID = get_rid()
+var area_rid: RID
+
+var area_disabled: bool = false setget set_area_disabled
 
 func _ready():
 	var _area: Area2D = Area2D.new()
 	_area.set_script(ExPhysicsBodyArea2D)
-	
 	area = _area
-	
 	add_child(area)
 	area.visible = false
-	area.collision_layer = 0
-	area.collision_mask = 0
+	area_rid = area.get_rid()
 
 func _process(delta: float):
+	if area_disabled:
+		return
 	
-	var not_found: Array = registered_shapes.keys().duplicate()
+	var found: Array = []
+	for shape_idx in Physics2DServer.body_get_shape_count(rid):
+		var shape: RID = Physics2DServer.body_get_shape(rid, shape_idx)
+		found.append(shape)
+		if shape in added_shapes:
+			continue
+		Physics2DServer.area_add_shape(area.get_rid(), shape, Physics2DServer.body_get_shape_transform(rid, shape_idx))
+		added_shapes.append(shape)
 	
-	for owner_id in get_shape_owners():
-		var shape: Node2D = shape_owner_get_owner(owner_id)
-		
-		if owner_id in registered_shapes:
-			if shape is CollisionShape2D:
-				registered_shapes[owner_id].shape = shape.shape
-			else: # CollisionPolygon2D
-				registered_shapes[owner_id].polygon = shape.polygon
-			
-			registered_shapes[owner_id].global_position = shape.global_position
-			
-		else:
-			var new_shape: Node2D = shape.duplicate(DUPLICATE_USE_INSTANCING)
-			area.add_child(new_shape)
-			registered_shapes[owner_id] = new_shape
-		
-		not_found.erase(owner_id)
+	for shape_idx in Physics2DServer.area_get_shape_count(area_rid):
+		var shape: RID = Physics2DServer.area_get_shape(area_rid, shape_idx)
+		if not shape in found:
+			Physics2DServer.area_remove_shape(area_rid, shape_idx)
+			added_shapes.erase(shape)
+
+func set_area_disabled(value: bool):
+	area_disabled = value
+	area.monitoring = area_disabled
+	area.monitorable = area_disabled
 	
-	for owner_id in not_found:
-		registered_shapes[owner_id].queue_free()
-		registered_shapes.erase(owner_id)
-		
+	if area_disabled:
+		Physics2DServer.area_clear_shapes(area_rid)

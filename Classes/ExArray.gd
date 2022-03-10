@@ -21,22 +21,25 @@ signal items_removed(items)
 signal items_trimmed(items)
 
 var array: Array
-var limit: int = INF
+var limit: int = -1
 
 # If true, items will be removed from the right (end) of the array when the limit is exceeded
-var limit_remove_from_right: bool = false
+var limit_remove_from_right: bool = true
 
 func _init(_array: Array = [], _limit: int = INF):
 	array = _array
 	limit = abs(_limit)
 	_enforce_limit()
 
-# Appends the array with an item up to the limit
-# If 'to_left' is true, the items are instead added to the left
-func fill_to_limit(with, to_left: bool = false) -> ExArray:
+# Returns true if the array has a limit
+func has_limit() -> bool:
+	return limit >= 0
+
+# Appends the array with an item up to its the limit. If [to_left] is true, the items are instead added to the left.
+func fill_to_limit(with, to_left: bool = false):
 	
-	if len(array) >= limit:
-		return self
+	if not has_limit() or len(array) >= limit:
+		return
 	
 	if to_left:
 		var new: Array = []
@@ -47,8 +50,6 @@ func fill_to_limit(with, to_left: bool = false) -> ExArray:
 	else:
 		for i in limit - len(array):
 			array.append(with)
-	
-	return self
 
 var _iter_current: int
 func _iter_init(arg):
@@ -62,7 +63,7 @@ func _iter_get(arg):
 
 # Enforces the limit by removing excess items if needed
 func _enforce_limit():
-	if len(array) > limit:
+	if has_limit() and len(array) > limit:
 		var trimmed: Array
 		if limit_remove_from_right:
 			if not get_signal_connection_list("items_trimmed").empty():
@@ -95,5 +96,23 @@ func remove(index: int):
 	array.remove(index)
 	emit_signal("items_removed", [item])
 
-func find(item, from: int = 0):
+func find(item, from: int = 0) -> int:
 	return array.find(item, from)
+
+func empty() -> bool:
+	return array.empty()
+
+func pop_back():
+	var ret = array.pop_back()
+	if ret != null:
+		emit_signal("items_removed", [ret])
+	return ret
+
+func pop_front():
+	var ret = array.pop_front()
+	if ret != null:
+		emit_signal("items_removed", [ret])
+	return ret
+
+func size() -> int:
+	return array.size()

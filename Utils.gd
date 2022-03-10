@@ -52,8 +52,30 @@ func sprint(items: Array, tprint: bool = false, divider: String = " | "):
 func tprint(msg):
 	print(OS.get_ticks_msec(), ": ", msg)
 
-# Returns a random item from [array] using [rng].
-func random_array_item(array: Array, rng: RandomNumberGenerator = get_RNG()):
+# Returns a random item from [array] using [rng]. If [weights] is passed, the item is selected according to those weights.
+func random_array_item(array: Array, weights: PoolRealArray = null, rng: RandomNumberGenerator = get_RNG()):
+	
+	if weights != null and not weights.empty():
+		
+		var total: float = 0.0
+		for i in array.size():
+			if i < weights.size():
+				assert(weights[i] >= 0.0)
+				total += weights[i]
+			else:
+				total += 1
+		
+		var target: float = rng.randf_range(0.0, total)
+		total = 0.0
+		var i: int = 0
+		for weight in weights:
+			total += weight
+			if total >= target:
+				return array[i]
+			i += 1
+		
+		assert(false)
+	
 	return array[rng.randi() % len(array)]
 
 # Returns a random colour.
@@ -259,8 +281,105 @@ func remote_yield(object: Object, signal_name: String, return_value_container: A
 		return_value_container.append(ret)
 	return ret
 
-func node_has_parent(node: Node):
+func node_has_parent(node: Node) -> bool:
 	return is_instance_valid(node.get_parent())
+
+func get_tilemap_tile_sprite(tilemap: TileMap, tile_position: Vector2, use_world_position: bool = true, use_sprite: Sprite = null) -> Sprite:
+	if use_world_position:
+		tile_position = tilemap.world_to_map(tilemap.to_local(tile_position))
+	
+	assert(tilemap.get_cellv(tile_position) != TileMap.INVALID_CELL)
+	
+	var sprite: Sprite = Sprite.new() if use_sprite == null else use_sprite
+	sprite.region_enabled = true
+	
+	var tile: int = tilemap.get_cellv(tile_position)
+	var tileset: TileSet = tilemap.tile_set
+	
+	sprite.texture = tileset.tile_get_texture(tile)
+	
+	if tilemap.is_cellv_autotile(tile_position):
+		sprite.region_rect = Rect2(tilemap.get_cellv_autotile_coord(tile_position) * (tileset.autotile_get_size(tile) + Vector2.ONE * tileset.autotile_get_spacing(tile)), tileset.autotile_get_size(tile))
+	else:
+		sprite.region_rect = tileset.tile_get_region(tile)
+	
+	return sprite
+
+func array_append(array: Array, append_value):
+	array.append(append_value)
+
+func yield_funcitons(functions: Array):
+	
+	var running_functions: ExArray = ExArray.new()
+	for function in functions:
+		if function is GDScriptFunctionState and function.is_valid():
+			running_functions.append(function)
+			function.connect("completed", running_functions, "erase", [function])
+	
+	while not running_functions.empty():
+		yield(running_functions, "items_removed")
+
+class Callback extends Reference:
+	var callback: FuncRef
+	var binds: Array
+	var standalone: bool
+	
+	var attached_node: Node = null setget attach_to_node
+	const ATTACHED_NODE_META_NAME: String = "CONNECTED_CALLBACKS"
+	
+	func _init(callback: FuncRef, binds: Array = [], standalone: bool = false):
+		self.callback = callback
+		self.binds = binds
+		self.standalone = standalone
+	
+	func attach_to_node(node: Node) -> Callback:
+		if node == attached_node:
+			return self
+		
+		# Detach from previous node
+		if attached_node != null and is_instance_valid(attached_node) and attached_node.has_meta(ATTACHED_NODE_META_NAME):
+			attached_node.get_meta(ATTACHED_NODE_META_NAME).erase(self)
+		
+		attached_node = node
+		
+		# Attach to new node
+		if attached_node != null:
+			assert(is_instance_valid(attached_node), "Node must be a valid instance")
+			if attached_node.has_meta(ATTACHED_NODE_META_NAME):
+				attached_node.get_meta(ATTACHED_NODE_META_NAME).append(self)
+			else:
+				attached_node.set_meta(ATTACHED_NODE_META_NAME, [self])
+		
+		return self
+	
+	func detach_from_node():
+		attach_to_node(null)
+	
+	func connect_signal(signal_object: Object, signal_name: String, auto_attach: bool = false) -> Callback:
+		if not is_signal_connected(signal_object, signal_name):
+			signal_object.connect(signal_name, self, CALLBACK_METHOD)
+		
+		if auto_attach:
+			assert(signal_object is Node, "Cannot attach to a non-node object")
+			attach_to_node(signal_object)
+		
+		return self
+	
+	func disconnect_signal(signal_object: Object, signal_name: String) -> Callback:
+		if is_signal_connected(signal_object, signal_name):
+			signal_object.disconnect(signal_name, self, CALLBACK_METHOD)
+		return self
+	
+	func is_signal_connected(signal_object: Object, signal_name: String) -> bool:
+		return signal_object.is_connected(signal_name, self, CALLBACK_METHOD)
+	
+	func _notification(what: int):
+		if what == NOTIFICATION_PREDELETE and attached_node == null and not standalone:
+			push_error("Callback was freed prematurely")
+	
+	const CALLBACK_METHOD: String = "call_callback"
+	func call_callback(_a=0, _b=0, _c=0, _d=0, _e=0, _f=0, _g=0, _h=0, _i=0, _j=0):
+		callback.call_funcv(binds)
 
 # ------------------------------
 

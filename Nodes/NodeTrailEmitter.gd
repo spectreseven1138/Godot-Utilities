@@ -15,6 +15,8 @@ var emission_timer: float = 0.0
 
 func _process(delta: float):
 	
+	modulate = Utils.get_global_modulate(get_parent())
+	
 	if not emitting:
 		emission_timer = 0.0
 		return
@@ -70,22 +72,19 @@ func emit_trails():
 	
 	var added: Array = []
 	for node in nodes_to_trail:
-		if not node.visible:
+		if not node.is_visible_in_tree():
 			continue
 		
 		var trail_node: Node2D = node.duplicate()
 		trail_node.set_meta("following_node", node)
 		trail_container.add_child(trail_node)
-		trail_node.global_position = node.global_position
+		trail_node.global_transform = node.global_transform
 		
 		get_tree().create_timer(lifetime).connect("timeout", trail_node, "queue_free")
 		
 		added.append(trail_node)
 	
 	if fade_out_from >= 0.0 and not added.empty():
-		if fade_out_from > 0.0:
-			yield(get_tree().create_timer(lifetime * fade_out_from), "timeout")
-		
 		for node in added:
-			fade_tween.interpolate_property(node, "modulate:a", node.modulate.a, 0.0, lifetime * (1.0 - fade_out_from))
+			fade_tween.interpolate_property(node, "modulate:a", node.modulate.a, 0.0, lifetime * (1.0 - fade_out_from), Tween.TRANS_SINE, Tween.EASE_IN_OUT, lifetime * fade_out_from)
 		fade_tween.start()
