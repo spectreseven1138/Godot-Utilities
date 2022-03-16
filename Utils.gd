@@ -1,4 +1,5 @@
 # Singleton containing various utility functions
+tool
 extends Node
 
 # Path of Godot-Utilities folder
@@ -7,6 +8,7 @@ var utils_path: String = get_script().resource_path.get_base_dir()
 var RNG: RandomNumberGenerator = RandomNumberGenerator.new() setget set_RNG, get_RNG
 var anchor: Node = null setget set_anchor, get_anchor
 var canvaslayer: CanvasLayer = null setget set_canvaslayer, get_canvaslayer
+var editor_log_label: RichTextLabel = null setget set_editor_log_label, get_editor_log_label
 
 # Returns the RNG object (a RandomNumberGenerator created and randomised on init).
 func get_RNG() -> RandomNumberGenerator:
@@ -27,30 +29,40 @@ func get_canvaslayer() -> CanvasLayer:
 		add_child(canvaslayer)
 	return canvaslayer
 
+func get_editor_log_label() -> Node:
+	if editor_log_label == null:
+		
+		# Create a temporary EditorPlugin and Control
+		var plugin: EditorPlugin = EditorPlugin.new()
+		var temp: Control = Control.new()
+		
+		# Add the Control to the editor bottom panel
+		plugin.add_control_to_bottom_panel(temp, "")
+		
+		# Cycle through each node in the bottom panel until the EditorLog is found
+		# The class is checked by string, as GDScript does not allow usage of editor node classes
+		for node in temp.get_parent().get_children():
+			if node.get_class() == "EditorLog":
+				editor_log_label = node.get_child(1)
+				break
+		
+		if editor_log_label == null:
+			push_error("Could not find the EditorLog node")
+		
+		# Remove plugin and temp nodes
+		plugin.remove_control_from_bottom_panel(temp)
+		temp.queue_free()
+		plugin.queue_free()
+		
+		editor_log_label.bbcode_enabled = true
+	
+	return editor_log_label
+
 # Creates a new node with the passed type, adds it to the anchor, and returns it
 func get_unique_anchor(type = Node) -> Node:
 	var ret: Node = type.new()
 	anchor.add_child(ret)
 	return ret
-
-# Prints [items] in a single line with dividers.
-# If [tprint] is true, prints using the tprint function.
-func sprint(items: Array, tprint: bool = false, divider: String = " | "):
-	var msg: String = ""
-	
-	for i in len(items):
-		msg += str(items[i])
-		if i + 1 != len(items):
-			msg += divider
-	
-	if tprint:
-		tprint(msg)
-	else:
-		print(msg)
-
-# Prints [msg] prepended with the current engine time (OS.get_ticks_msec()). Useful for printing every frame.
-func tprint(msg):
-	print(OS.get_ticks_msec(), ": ", msg)
 
 # Returns a random item from [array] using [rng]. If [weights] is passed, the item is selected according to those weights.
 func random_array_item(array: Array, weights: PoolRealArray = null, rng: RandomNumberGenerator = get_RNG()):
@@ -80,11 +92,87 @@ func random_array_item(array: Array, weights: PoolRealArray = null, rng: RandomN
 
 # Returns a random colour.
 # Individual values can be overridden using [r], [g], [b], and [a].
-func random_colour(r: float = NAN, g: float = NAN, b: float = NAN, a: float = NAN, rng: RandomNumberGenerator = get_RNG()) -> Color:
+func random_colour(r: float = NAN, g: float = NAN, b: float = NAN, a: float = 1.0, rng: RandomNumberGenerator = get_RNG()) -> Color:
 	var ret: Color = Color(rng.randf(), rng.randf(), rng.randf())
-	for property in ["r", "g", "b", "a"]:
-		if not is_nan(get(property)):
-			ret[property] = get(property)
+	if not is_nan(r):
+		ret.r = r
+	if not is_nan(g):
+		ret.g = g
+	if not is_nan(b):
+		ret.b = b
+	if not is_nan(a):
+		ret.a = a
+	return ret
+
+# Prints each of the [properties] of [object] by name. If [properties] is not passed, all properties of the script or class are printed. 
+func printvars(object: Object, properties: PoolStringArray = null):
+	
+	if properties == null:
+		
+		var script: Script = object.get_script()
+		if script != null:
+			properties = PoolStringArray(script.get_script_constant_map().keys())
+			for property in script.get_script_property_list():
+				properties.append(property["name"])
+		else:
+			properties = PoolStringArray(ClassDB.class_get_property_list(object.get_class(), true))
+	
+	var msg: String = "Object " + str(object) + ":\n---------------------------------------------\n"
+	for property in properties:
+		var value = object.get(property)
+		msg += property + " (" + str(typeof(value)) + "): " + str(value) + "\n"
+	msg += "---------------------------------------------"
+	
+	print(msg)
+
+# Prints a string to the editor log, with BBCode parsing enabled
+func print_bbcode(bbcode: String):
+	get_editor_log_label().append_bbcode(bbcode)
+	get_editor_log_label().newline()
+
+# Prints [message] to the editor log with [colour]ed text.
+func printc(message, colour: Color):
+	print_bbcode(bbcode_colour_text(str(message), colour))
+
+func print(message):
+	print(message)
+
+func prints(messages: Array):
+	var msg: String = ""
+	for message in messages:
+		msg += str(message) + " | "
+	print(msg.trim_suffix(" | "))
+
+# Clears the editor output log. If [print_message] is true, prints a message after clearing the log.
+func clear_log(print_message: bool = true):
+	get_editor_log_label().clear()
+	if print_message:
+		printc("<Log cleared>\n", Color.coral)
+
+# Calls [function] with [arguments], then returns whatever was printed to the engine log during the call.
+# If [passthrough] is false, removes the printed content from the log.
+func capture_log_function(function: FuncRef, arguments: Array = [], passthrough: bool = false) -> String:
+	var editor_log: RichTextLabel = get_editor_log_label()
+	var before: String = editor_log.text
+	function.call_funcv(arguments)
+	
+	var after: String = editor_log.text
+	
+	# If log was cleared
+	if not after.begins_with(before):
+		if not passthrough:
+			clear_log(false)
+		
+		return after
+	
+	var ret: String = after.trim_prefix(before).trim_suffix("\n")
+	if not passthrough:
+		
+		# Removing lines seems to be the only way to erase text while preserving bbcode
+		var line: int = before.count("\n")
+		for _i in ret.count("\n") + 1:
+			editor_log.remove_line(line)
+	
 	return ret
 
 # Removes [node] from its parent, then adds it to  [new_parent].
@@ -115,22 +203,31 @@ func get_node_position(node: Node, global: bool = false) -> Vector2:
 	elif node is Control:
 		return node.rect_global_position if global else node.rect_position
 	elif node is Spatial:
-		return node.global_transform if global else node.transform
+		return node.global_transform.origin if global else node.transform.origin
 	else:
-		push_error("Node '" + str(node) + "' isn't a Node2D or Control")
+		push_error("Node '" + str(node) + "' isn't a Node2D, Control, or Spatial")
 		return Vector2.ZERO
 
 # Sets the local or [global] position of the [node].
 # [node] must be a Node2D, Control, or Spatial.
 func set_node_position(node: Node, position, global: bool = false):
 	if node is Node2D:
-		node.set("global_position" if global else "position", position)
+		if global:
+			node.global_position = position
+		else:
+			node.position = position
 	elif node is Control:
-		node.set("rect_global_position" if global else "rect_position", position)
+		if global:
+			node.rect_global_position = global
+		else:
+			node.rect_position = global
 	elif node is Spatial:
-		node.set("global_transform" if global else "transform", position)
+		if global:
+			node.global_transform.origin = position
+		else:
+			node.transform.origin = position
 	else:
-		push_error("Node '" + str(node) + "' isn't a Node2D or Control")
+		push_error("Node '" + str(node) + "' isn't a Node2D, Control, or Spatial")
 
 # Returns the global modulation of [node] (the product of the modulations of the node and all its ancestors).
 # In other words, returns the actual modulation applied to the node when rendered.
@@ -241,6 +338,7 @@ func yield_particle_completion(emitter: Node):
 		
 		yield(get_tree().create_timer(emitter.lifetime / emitter.speed_scale), "timeout")
 
+# TODO
 enum DIR2DICT_MODES {NESTED, SINGLE_LAYER_DIR, SINGLE_LAYER_FILE}
 func dir2dict(path: String, mode: int = DIR2DICT_MODES.NESTED, allowed_files = null, allowed_extensions = null, top_path: String = ""):
 	var ret: Dictionary = {}
@@ -274,42 +372,40 @@ func dir2dict(path: String, mode: int = DIR2DICT_MODES.NESTED, allowed_files = n
 	
 	return ret
 
-# Yields [signal_name] of [object] and returns the resulting value. If [return_value_container] is passed, the result value will be appended onto it. Useful for executing code while waiting for the signal.
-func remote_yield(object: Object, signal_name: String, return_value_container: Array = null):
-	var ret = yield(object, signal_name)
-	if return_value_container:
-		return_value_container.append(ret)
-	return ret
-
+# Returns true if [node] has a parent
 func node_has_parent(node: Node) -> bool:
 	return is_instance_valid(node.get_parent())
 
-func get_tilemap_tile_sprite(tilemap: TileMap, tile_position: Vector2, use_world_position: bool = true, use_sprite: Sprite = null) -> Sprite:
-	if use_world_position:
-		tile_position = tilemap.world_to_map(tilemap.to_local(tile_position))
+# Constructs and returns a Sprite node from the passed [tilemap] and [cell_position]. If [use_world_position] is true, treats [cell_position] as a global coordinate.
+# If [use_sprite] is passed, uses it as the Sprite instead of creating a new one.
+func get_tilemap_tile_sprite(tilemap: TileMap, cell_position: Vector2, use_world_position: bool = true, use_sprite: Sprite = null) -> Sprite:
 	
-	assert(tilemap.get_cellv(tile_position) != TileMap.INVALID_CELL)
+	# Convert global position to local cell position
+	if use_world_position:
+		cell_position = tilemap.world_to_map(tilemap.to_local(cell_position))
+	
+	var tile: int = tilemap.get_cellv(cell_position)
+	assert(tile != TileMap.INVALID_CELL)
+	
+	var tileset: TileSet = tilemap.tile_set
 	
 	var sprite: Sprite = Sprite.new() if use_sprite == null else use_sprite
 	sprite.region_enabled = true
-	
-	var tile: int = tilemap.get_cellv(tile_position)
-	var tileset: TileSet = tilemap.tile_set
-	
 	sprite.texture = tileset.tile_get_texture(tile)
+	sprite.modulate = tileset.tile_get_modulate(tile)
 	
-	if tilemap.is_cellv_autotile(tile_position):
-		sprite.region_rect = Rect2(tilemap.get_cellv_autotile_coord(tile_position) * (tileset.autotile_get_size(tile) + Vector2.ONE * tileset.autotile_get_spacing(tile)), tileset.autotile_get_size(tile))
+	if tilemap.is_cellv_autotile(cell_position):
+		sprite.region_rect = Rect2(tilemap.get_cellv_autotile_coord(cell_position) * (tileset.autotile_get_size(tile) + Vector2.ONE * tileset.autotile_get_spacing(tile)), tileset.autotile_get_size(tile))
 	else:
 		sprite.region_rect = tileset.tile_get_region(tile)
 	
 	return sprite
 
+# Calls the append function on [array] with [append_value]
 func array_append(array: Array, append_value):
 	array.append(append_value)
 
-func yield_funcitons(functions: Array):
-	
+func yield_functions(functions: Array):
 	var running_functions: ExArray = ExArray.new()
 	for function in functions:
 		if function is GDScriptFunctionState and function.is_valid():
@@ -319,6 +415,48 @@ func yield_funcitons(functions: Array):
 	while not running_functions.empty():
 		yield(running_functions, "items_removed")
 
+# Calls each function connected to [signal_name] of [object], and yields each function until complered
+func emit_signal_and_yield(object: Object, signal_name: String):
+	var running_functions: ExArray = ExArray.new()
+	for connection in object.get_signal_connection_list(signal_name):
+		var function = connection["target"].callv(connection["method"], connection["binds"])
+		if function is GDScriptFunctionState:
+			running_functions.append(function)
+			function.connect("completed", running_functions, "erase", [function])
+	
+	if running_functions.empty():
+		yield(get_tree(), "idle_frame")
+	else:
+		while not running_functions.empty():
+			yield(running_functions, "items_removed")
+
+# Swaps the values of [property_a] and [property_b] on [object]
+func swap_values(object: Object, property_a: String, property_b: String):
+	var value_a = object.get(property_a)
+	object.set(property_a, object.get(property_b))
+	object.set(property_b, value_a)
+
+# Adds [child] to [node], then sets ownership of child to the scene root so that it appears in the editor
+func tool_add_child(node: Node, child: Node):
+	assert(Engine.editor_hint and node.is_inside_tree())
+	node.add_child(child)
+	child.set_owner(node.get_tree().get_edited_scene_root())
+
+# Returns an array of the script export properties of [object]
+func get_export_property_list(object: Object) -> PoolStringArray:
+	var script: Script = object.get_script()
+	assert(script != null)
+	
+	var ret: PoolStringArray = PoolStringArray()
+	for property in script.get_script_property_list():
+		if property["usage"] in [PROPERTY_USAGE_EDITOR,
+								PROPERTY_USAGE_DEFAULT,
+								PROPERTY_USAGE_DEFAULT_INTL
+								]:
+			ret.append(property["name"])
+	
+	return ret
+
 class Callback extends Reference:
 	var callback: FuncRef
 	var binds: Array
@@ -326,6 +464,8 @@ class Callback extends Reference:
 	
 	var attached_node: Node = null setget attach_to_node
 	const ATTACHED_NODE_META_NAME: String = "CONNECTED_CALLBACKS"
+	
+	signal CALLED(binds)
 	
 	func _init(callback: FuncRef, binds: Array = [], standalone: bool = false):
 		self.callback = callback
@@ -379,7 +519,9 @@ class Callback extends Reference:
 	
 	const CALLBACK_METHOD: String = "call_callback"
 	func call_callback(_a=0, _b=0, _c=0, _d=0, _e=0, _f=0, _g=0, _h=0, _i=0, _j=0):
-		callback.call_funcv(binds)
+		if callback != null:
+			callback.call_funcv(binds)
+		emit_signal("CALLED", binds)
 
 # ------------------------------
 
@@ -396,4 +538,8 @@ func set_anchor(_value: Node):
 
 # Deleted function
 func set_canvaslayer(_value: CanvasLayer):
+	return
+
+# Deleted function
+func set_editor_log_label(_value: RichTextLabel):
 	return

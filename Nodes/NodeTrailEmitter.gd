@@ -13,9 +13,10 @@ var trail_container: Node2D
 var fade_tween: Tween
 var emission_timer: float = 0.0
 
-func _process(delta: float):
-	
-	modulate = Utils.get_global_modulate(get_parent())
+func _process(delta: float) -> void:
+	if follow_speed > 0.0:
+		for trail_node in trail_container.get_children():
+			trail_node.global_position = lerp(trail_node.global_position, trail_node.get_meta("following_node").global_position, delta * follow_speed)
 	
 	if not emitting:
 		emission_timer = 0.0
@@ -28,11 +29,6 @@ func _process(delta: float):
 		if emission_timer >= 1.0 / frequency:
 			emit_trails()
 			emission_timer = 0.0
-
-func _physics_process(delta: float):
-	if follow_speed > 0.0:
-		for trail_node in trail_container.get_children():
-			trail_node.global_position = lerp(trail_node.global_position, trail_node.get_meta("following_node").global_position, delta * follow_speed)
 
 func _ready():
 	
@@ -47,6 +43,8 @@ func _ready():
 		if has_node(path):
 			assert(get_node(path) is Node2D)
 			add_trail_node(get_node(path))
+	
+	modulate = Utils.get_global_modulate(get_parent())
 
 # Returns true if emitting trail for [node]
 func has_trail_node(node: Node) -> bool:
